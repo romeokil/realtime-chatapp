@@ -1,69 +1,71 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import http from 'http';
-import { Server } from 'socket.io';
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import http from "http";
+import { Server } from "socket.io";
 
-import connectDB from './config/db.js'
-import Message from './models/Message.js'
 dotenv.config();
-connectDB();
-
-const PORT = process.env.PORT || 5000;
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+const PORT = process.env.PORT || 5000;
+
 const server = http.createServer(app);
+
 const io = new Server(server, {
-    cors: {
-        origin: "*",
-    },
-})
+  cors: {
+    origin: "*",
+  },
+});
 
-// store online users
-const users = {};
 
+// ye hmara socket communication hai.
 io.on("connection", (socket) => {
-    console.log(`User Connected: `, socket.id);
+  console.log("Socket connected:", socket.id);
 
-    // register user
+  socket.on("chat_message", (data, callback) => {
+    const { message } = data;
 
-    socket.on("join", (username) => {
-        users[username] = socket.id;
-        console.log(`${username} joined`);
-    })
+    console.log("Message received:", message);
 
-    // handle sending message
+    let response;
 
-    socket.on("send_message", async (data) => {
-        const { sender, receiver, message } = data;
+    if (message.toLowerCase() === "hello") {
+      response = "Hi! How can I help you?";
+    } else if (message.toLowerCase() === "how are you") {
+      response = "I am running perfectly!";
+    } else {
+      response = "Sorry, I didn't understand.";
+    }
+    callback({
+      reply: response,
+    });
+  });
 
-        // Saving message in db
-        const newMessage = new Message({ sender, reciever, message });
-        await newMessage.save();
+  socket.on("disconnect", () => {
+    console.log("Socket disconnected:", socket.id);
+  });
+});
 
-        // Send message to reciever if online
-        const recieverSocket = users[receiver];
-        if (recieverSocket) {
-            io.to(recieverSocket).emit("receive_message", data);
-        }
-    })
 
-    socket.on("disconnect", () => {
-        console.log('User disconnected', socket.id);
-    })
+// internal socket client baana rhe hai hmlog.
+import { io as Client } from "socket.io-client";
 
-})
+const internalSocket = Client(`http://localhost:${PORT}`);
 
+
+// API THAT USES SOCKET
+app.post("/api/chat", (req, res) => {
+  const { message } = req.body;
+
+  internalSocket.emit("chat_message", { message }, (response) => {
+    res.json(response);
+  });
+});
 
 
 server.listen(PORT, () => {
-    try {
-        console.log(`Server is running at ${PORT}`);
-    }
-    catch {
-        console.log(`Error while connecting to Server`);
-    }
-})
+  console.log(`Server running on port ${PORT}`);
+});
