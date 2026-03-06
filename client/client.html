@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Socket Chat</title>
+</head>
+
+<body>
+
+<h2>Realtime Chat</h2>
+
+<input id="username" placeholder="Enter name" />
+<br><br>
+
+<input id="message" placeholder="Enter message" />
+<button onclick="sendMessage()">Send</button>
+
+<ul id="chat"></ul>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+<script>
+
+const socket = io("http://localhost:8000");
+
+socket.on("connect", () => {
+  console.log("Connected:", socket.id);
+});
+
+function sendMessage(){
+
+  const user = document.getElementById("username").value;
+  const message = document.getElementById("message").value;
+
+  socket.emit("send_message", {
+    user,
+    message
+  });
+
+}
+
+socket.on("receive_message", (data) => {
+
+  const li = document.createElement("li");
+
+  li.innerText = data.user + ": " + data.message;
+
+  document.getElementById("chat").appendChild(li);
+
+});
+
+</script>
+
+</body>
+</html>
